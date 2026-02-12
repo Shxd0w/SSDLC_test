@@ -1,0 +1,549 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>SSDLC Visualization</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 30px;
+            background: #f5f5f5;
+        }
+
+        h1 {
+            margin-bottom: 10px;
+        }
+
+        .phase {
+            margin-top: 20px;
+            padding: 15px;
+            background: white;
+            border-radius: 8px;
+            border-left: 6px solid #4a90e2;
+        }
+
+        .phase h2 {
+            margin: 0 0 15px 0;
+            color: #333;
+        }
+
+        .category {
+            margin-left: 10px;
+            margin-bottom: 10px;
+            padding: 10px;
+            cursor: pointer;
+            background: #eef4ff;
+            border-radius: 5px;
+            font-weight: bold;
+            transition: background 0.2s;
+        }
+
+        .category:hover {
+            background: #d9e8ff;
+        }
+
+        .details {
+            display: none;
+            margin-left: 40px;
+            margin-top: 10px;
+            margin-bottom: 15px;
+            padding: 15px;
+            background: #ffffff;
+            border: 1px solid #ccc;
+            border-radius: 8px;
+        }
+
+        .details.show {
+            display: block;
+        }
+
+        .artifact-link {
+            color: #0078d4;
+            text-decoration: underline;
+            cursor: pointer;
+        }
+
+        .artifact-link:hover {
+            text-decoration: underline;
+        }
+
+        .artifact-link.empty {
+            color: #888;
+            text-decoration: none;
+            cursor: not-allowed;
+        }
+
+        .missing-warning {
+            color: #d9534f;
+            font-size: 0.85em;
+            font-style: italic;
+            margin-left: 5px;
+        }
+
+        .section {
+            margin-bottom: 15px;
+        }
+
+        .section-title {
+            font-weight: bold;
+            margin-bottom: 8px;
+            color: #333;
+            font-size: 0.95em;
+        }
+
+        .section-content ul {
+            margin: 5px 0;
+            padding-left: 20px;
+        }
+
+        .section-content li {
+            margin-bottom: 5px;
+            line-height: 1.5;
+        }
+    </style>
+</head>
+<body>
+    <div id="app">
+        <h1>DMS Secured Software Development Life Cycle (SSDLC)</h1>
+        <p>Click a category to view Inputs → Activities → Artifacts.</p>
+        <div id="container"></div>
+    </div>
+    <script type="text/javascript">
+        // TODO: Replace this URL with the direct SharePoint manifest.json path
+        // Format: https://yourtenant.sharepoint.com/sites/yoursite/Shared%20Documents/SSDLC/manifest.json
+
+        // Use a CORS proxy to bypass SharePoint restrictions
+        const manifestUrl = 'https://cors-anywhere.herokuapp.com/https://msiglobalcomsg.sharepoint.com/:u:/t/SDLC/IQCG09GV7ETTS5wfRBuEoujVAbLW70ocxBWGjQWl5km_QwM?e=JyGS4g';
+
+        // Or use another CORS proxy:
+        // const manifestUrl = 'https://api.allorigins.win/raw?url=https://msiglobalcomsg.sharepoint.com/sites/SDLC/Shared%20Documents/manifest.json';
+
+        let folderLookup = {};
+
+        const ssdlcData = [                                                                                                                                                                         
+            {
+                phase: "Initiation / Vision",
+                categories: [
+                    {
+                        title: "Business Case & Tender Reference",
+                        inputs: ["RFP / Tender Documents", "Reference Architecture", "Industry Standards & Best Practices"],
+                        activities: ["Understand business objectives", "Analyse tender requirements vs organizational capability", "Validate alignment with enterprise reference architecture", "Define architecture principles"],
+                        artifacts: ["Business Case Document", "High-Level Solution Options", "Initial Value Proposition", "Preliminary Architecture Principles"]
+                    },
+                    {
+                        title: "Stakeholder & Objective Identification",
+                        inputs: ["RFP Stakeholder list", "Business/Functional Requirements"],
+                        activities: ["Identify and classify stakeholders (internal/external)", "Capture business drivers, objectives, success criteria", "Define assumptions & constraints"],
+                        artifacts: ["Stakeholder Register", "RACI Matrix (optional)", "Objective Alignment Matrix"]
+                    },
+                    {
+                        title: "Scope Definition",
+                        inputs: ["Business Vision Document", "Preliminary Requirements"],
+                        activities: ["Define project boundaries (in-scope vs out-of-scope)", "Identify dependencies & risks", "Establish key milestones & timelines"],
+                        artifacts: ["High-Level Scope Statement", "Draft Work Breakdown Structure (WBS)", "Initial Risk Register"]
+                    },
+                    {
+                        title: "Feasibility & Gap Analysis",
+                        inputs: ["Current State (As-Is) Systems Overview", "Business Case Inputs", "Technical Constraints"],
+                        activities: ["Assess feasibility (technical, operational, financial)", "Conduct preliminary gap analysis between As-Is & To-Be", "Identify high-level solution alternatives"],
+                        artifacts: ["Feasibility Report", "Gap Analysis Document", "Architecture Vision (High-Level To-Be Model)"]
+                    },
+                    {
+                        title: "Project Governance Setup",
+                        inputs: ["Organization's PMO policies", "Compliance / Regulatory Requirements"],
+                        activities: ["Define governance structure", "Assign project roles/responsibilities", "Define communication & reporting plan"],
+                        artifacts: ["Project Charter", "Governance & Communication Plan", "Initial RAID Log (Risks, Assumptions, Issues, Dependencies)"]
+                    }
+                ]
+            },
+            {
+                phase: "Requirements Analysis",
+                categories: [
+                    {
+                        title: "Business Requirements Gathering",
+                        inputs: ["Tender Documents (General Spec / Particular Spec)", "Stakeholder interviews & workshops", "Compliance Matrix", "Reference Architecture"],
+                        activities: ["Elicit business needs from stakeholders", "Document high-level business processes", "Define functional & non-functional requirements", "Validate against compliance & regulatory needs"],
+                        artifacts: ["Business Requirements Document (BRD)", "Process Flow Diagrams", "Business Rules Catalogue"]
+                    },
+                    {
+                        title: "Requirements Traceability",
+                        inputs: ["Tender compliance", "BRD"],
+                        activities: ["Define mapping between business requirements → functional requirements → design", "Establish acceptance criteria", "Ensure audit trail from requirements to testing"],
+                        artifacts: ["Requirements Traceability Matrix (RTM)"]
+                    },
+                    {
+                        title: "Architecture Requirements",
+                        inputs: ["Reference architecture", "Current system documentation (if applicable)"],
+                        activities: ["Define logical architecture & physical architecture", "Establish N-Tier application models", "Identify integration points"],
+                        artifacts: ["Logical Architecture", "Physical Architecture", "N-Tier Architecture Blueprint (Partial)"]
+                    },
+                    {
+                        title: "Functional & Non-Functional Requirements",
+                        inputs: ["Business objectives", "Industry best practices", "SLAs & KPIs"],
+                        activities: ["Define detailed functional use cases & scenarios (happy flow, exception flow, misuse cases)", "Define NFRs: performance, scalability, security, usability, reliability, maintainability"],
+                        artifacts: ["Functional Use Cases & User Stories", "Non-Functional Requirements Specification"]
+                    },
+                    {
+                        title: "Modelling & Diagrams",
+                        inputs: ["User stories & workflows", "BRD/SRS draft"],
+                        activities: ["Develop UML diagrams (Use Case, Sequence, Component, Swimlane, Activity)", "Validate models with stakeholders", "Refine based on feedback"],
+                        artifacts: ["UML Diagrams (Use Case, Sequence, Component, Swimlane)", "System Context Diagrams"]
+                    },
+                    {
+                        title: "System Requirements Specification (SRS)",
+                        inputs: ["BRD", "Functional & non-functional requirements"],
+                        activities: ["Consolidate business, system, and integration requirements", "Formalize into baseline document", "Review & sign-off with stakeholders"],
+                        artifacts: ["System Requirements Specification (SRS)"]
+                    },
+                    {
+                        title: "Security Requirements & Threat Modelling",
+                        inputs: ["Security standards (GDPR, PDPA, PCI-DSS, ISO 27001)", "Enterprise Security Policies"],
+                        activities: ["Define security controls", "Identify risks & vulnerabilities", "Perform threat modelling & risk assessment"],
+                        artifacts: ["Security Requirements Document", "Threat Model Document (attack trees, misuse cases, STRIDE analysis)"]
+                    }
+                ]
+            },
+            {
+                phase: "Architecture & Design",
+                categories: [
+                    {
+                        title: "Data Architecture",
+                        inputs: ["Business requirements (BRD/SRS)", "Process flows", "Data dictionary (if any)"],
+                        activities: ["Define data entities, attributes & relationships", "Design logical and physical data models", "Define data storage & retrieval mechanisms", "Align with data governance & compliance rules"],
+                        artifacts: ["Parameter Data Definition", "Database Schema & Architecture", "ER Diagrams", "Data Flow Diagrams (DFDs)"]
+                    },
+                    {
+                        title: "Application Architecture",
+                        inputs: ["Functional requirements", "Use cases & user stories", "Non-functional requirements"],
+                        activities: ["Define application layers & modules", "High-level design (HLD) & Low-level design (LLD)", "Identify dependencies & interfaces", "Define microservices, APIs, messaging patterns", "Choose technology stack"],
+                        artifacts: ["System Design (HLD/LLD)", "Activity Diagrams", "Use Case Diagrams", "Interface Specifications", "Hardware/Infra Specifications", "API Management Plan (Partial for DMP and RTS)", "Microservices Service Catalogue"]
+                    },
+                    {
+                        title: "Solution Architecture",
+                        inputs: ["Enterprise architecture reference models", "Compliance requirements", "Business capability models"],
+                        activities: ["Define end-to-end architecture", "Map business processes to system components", "Align with enterprise/TOGAF principles", "Ensure scalability, availability, security"],
+                        artifacts: ["Solution Architecture Document (SAD)", "Architecture Decision Records (ADRs) (Partial for DMP)"]
+                    },
+                    {
+                        title: "Integration Architecture",
+                        inputs: ["Legacy system specs", "ERP, CRM, payment gateway requirements", "Interface contracts"],
+                        activities: ["Define integration patterns (batch, real-time, event-driven)", "Define APIs, middleware, queues", "Map data exchange & transformation", "Ensure interoperability"],
+                        artifacts: ["Integration Architecture Blueprint", "API Specs & Contracts", "Data Mapping Docs"]
+                    },
+                    {
+                        title: "Security Architecture",
+                        inputs: ["Security policies", "Regulatory/compliance requirements (GDPR, PCI DSS, etc.)"],
+                        activities: ["Perform threat modelling", "Define IAM model (RBAC, ABAC)", "Define encryption & key management", "Review secure coding practices"],
+                        artifacts: ["Security Requirements & Policies", "Identity & Access Management (IAM) / RBAC Model", "Threat Models", "Encryption & Key Management Strategy"]
+                    },
+                    {
+                        title: "UI/UX Design",
+                        inputs: ["User stories", "Customer journey maps", "Accessibility standards"],
+                        activities: ["Create wireframes, mock-ups, interactive prototypes", "Conduct usability testing", "Align with branding guidelines", "Validate with end-users"],
+                        artifacts: ["Wireframes", "Prototypes", "Style Guides", "UI Specification Document"]
+                    },
+                    {
+                        title: "Development Planning",
+                        inputs: ["Functional & non-functional requirements", "Tech stack decisions"],
+                        activities: ["Define TDD approach", "Establish coding standards", "Plan CI/CD pipelines"],
+                        artifacts: ["Test-Driven Development (TDD) Plan", "Unit Test Cases (partial)", "CI/CD Pipeline Design"]
+                    }
+                ]
+            },
+            {
+                phase: "Implementation & Development",
+                categories: [
+                    {
+                        title: "Development Environment Setup",
+                        inputs: ["Solution Architecture Document (SAD)", "Tech stack recommendations", "Security & compliance guidelines"],
+                        activities: ["Select front-end & back-end frameworks", "Finalize tech stack (languages, libraries, DB, runtime)", "Configure IDEs, dev tools, version control"],
+                        artifacts: ["Development Framework (Front-End/Back-End)", "Tech Stack Document", "IDE & Tooling Config Docs", "Version Control Setup & Branching Strategy (Partial)"]
+                    },
+                    {
+                        title: "Coding Standards & Security",
+                        inputs: ["Secure coding guidelines", "OWASP Top 10 / CERT standards", "Organization's development policies"],
+                        activities: ["Establish secure coding practices", "Conduct peer reviews & code inspections", "Apply static/dynamic code analysis tools"],
+                        artifacts: ["Secure Coding Standards Document", "SAST/DAST/SCA Reports (e.g., SonarQube)", "OWASP Top 10 Compliance Report"]
+                    },
+                    {
+                        title: "Continuous Integration / Deployment (CI/CD)",
+                        inputs: ["DevOps policies", "Infrastructure requirements", "IaC templates"],
+                        activities: ["Setup CI/CD pipelines", "Automate build, test, and deployment", "Implement Infrastructure as Code"],
+                        artifacts: ["CI/CD Pipeline Setup Docs", "IaC Scripts", "Deployment Automation Blueprints"]
+                    },
+                    {
+                        title: "Source Code & Configuration Management",
+                        inputs: ["Design specs (HLD/LLD)", "API/interface contracts"],
+                        activities: ["Maintain repositories for source code & configs", "Enforce branching/merging strategies", "Track changes via version control", "Establish configuration & release management"],
+                        artifacts: ["Source Code Repositories (Git, SVN, etc.)", "Configuration Repositories", "Change/Configuration Management Plan", "Release Management Document"]
+                    },
+                    {
+                        title: "Database Development",
+                        inputs: ["Data models (ERD, schemas)", "Data migration requirements"],
+                        activities: ["Implement DB schemas", "Develop stored procedures, triggers, indexes", "Write migration & rollback scripts"],
+                        artifacts: ["Database Schemas", "Data Migration Scripts", "DB Change Logs"]
+                    },
+                    {
+                        title: "Integration & Interfaces",
+                        inputs: ["Integration architecture", "External system specs (ERP, CRM, Payment Gateway, etc.)"],
+                        activities: ["Develop APIs & services", "Document request/response contracts", "Validate interface consistency"],
+                        artifacts: ["Interface Control Document (ICD)", "API Specs", "Integration Stubs/Mocks"]
+                    },
+                    {
+                        title: "Unit Testing & Coverage",
+                        inputs: ["Test-driven development plan", "SRS/RTM requirements"],
+                        activities: ["Develop unit test cases", "Execute unit tests with frameworks", "Measure coverage & quality"],
+                        artifacts: ["Unit Test Cases", "Unit Test Coverage Reports (Partial)", "Code Quality Metrics Reports (Partial)"]
+                    }
+                ]
+            },
+            {
+                phase: "Testing / Verification",
+                categories: [
+                    {
+                        title: "Test Planning",
+                        inputs: ["System Requirements Specification (SRS)", "Business Requirements Document (BRD)", "RTM (baseline)", "Solution Architecture & Design Docs"],
+                        activities: ["Define overall test strategy (scope, objectives, test types)", "Prepare detailed test plan (resources, environment, timelines)", "Define entry/exit criteria"],
+                        artifacts: ["Test Strategy Document", "Test Plans"]
+                    },
+                    {
+                        title: "Test Design",
+                        inputs: ["SRS & BRD", "Use cases, user stories", "NFRs (performance, scalability, security)"],
+                        activities: ["Create test cases (FR/NFR)"],
+                        artifacts: ["Test Cases", "Test Scripts"]
+                    },
+                    {
+                        title: "Test Execution",
+                        inputs: ["Test plan & test cases", "Configured test environment"],
+                        activities: ["Execute functional, regression, integration, performance, and security tests", "Automate repetitive tests", "Record results & log defects"],
+                        artifacts: ["Test Summary Reports", "Automated Test Reports", "Defect Logs", "Defect Resolution Reports"]
+                    },
+                    {
+                        title: "Traceability & Coverage",
+                        inputs: ["RTM (baseline)", "Test execution results"],
+                        activities: ["Update RTM with test coverage", "Verify that all requirements have been validated", "Close any gaps with stakeholders"],
+                        artifacts: ["Updated RTM (with test coverage)", "Coverage Matrix Reports"]
+                    },
+                    {
+                        title: "Compliance & Security Testing",
+                        inputs: ["PCI DSS, GDPR Req.", "Security Policies"],
+                        activities: ["Penetration Testing", "Chaos Testing", "Resilience Testing"],
+                        artifacts: ["Pen Test Reports", "Chaos/Resilience Reports"]
+                    }
+                ]
+            },
+            {
+                phase: "Deployment & Transition",
+                categories: [
+                    {
+                        title: "Deployment Planning",
+                        inputs: ["Release Management Docs", "Test Summary & Sign-off Reports", "CI/CD Pipeline Setup", "Infrastructure Requirements"],
+                        activities: ["Define deployment approach (phased, big-bang, parallel run, pilot)", "Prepare cutover plan & rollback strategy", "Allocate resources & timelines", "Align with business downtime windows"],
+                        artifacts: ["Deployment Plan", "Cutover Plan & Rollback Plan"]
+                    },
+                    {
+                        title: "Automation & Infrastructure",
+                        inputs: ["CI/CD pipeline (DevOps)", "Infrastructure as Code (IaC) templates"],
+                        activities: ["Execute automated deployment", "Provision infra using IaC", "Validate environments post-deployment"],
+                        artifacts: ["CI/CD Execution Logs", "IaC Templates & Scripts"]
+                    },
+                    {
+                        title: "Release Management",
+                        inputs: ["Tested build", "Configuration management plan"],
+                        activities: ["Finalize release scope", "Prepare release notes (features, fixes, known issues)", "Validate compatibility & environment readiness"],
+                        artifacts: ["Release Notes", "Configuration Management Logs"]
+                    },
+                    {
+                        title: "Knowledge Transfer & Training",
+                        inputs: ["System design docs", "SOP drafts", "User role matrix"],
+                        activities: ["Conduct KT sessions for operations team", "Prepare training manuals, quick reference guides", "Document SOPs for recurring tasks"],
+                        artifacts: ["Knowledge Transfer Decks", "Training Manuals / User Guides", "Standard Operating Procedures (SOPs) (Partial)"]
+                    },
+                    {
+                        title: "Data Migration & Validation",
+                        inputs: ["Data migration scripts", "Source & target DB mapping", "Business validation rules"],
+                        activities: ["Execute migration scripts", "Validate migrated data against source", "Perform reconciliation reports with business sign-off"],
+                        artifacts: ["Data Migration Report", "Data Validation Report", "Reconciliation Report"]
+                    },
+                    {
+                        title: "Change & Configuration Handover",
+                        inputs: ["Change requests (approved)", "Updated system configs"],
+                        activities: ["Track & implement changes in production", "Validate environment versions", "Formalize O&M handover to support team"],
+                        artifacts: ["Change/Configuration Management Docs", "Handover Checklist"]
+                    }
+                ]
+            },
+            {
+                phase: "Maintenance (Operations & Support)",
+                categories: [
+                    {
+                        title: "Operations & Monitoring",
+                        inputs: ["Deployment sign-off", "Standard Operating Procedures (SOPs)", "Monitoring tools & dashboards"],
+                        activities: ["Monitor system health (availability, performance, logs)", "Track SLAs & KPIs", "Provide L1/L2/L3 support"],
+                        artifacts: ["O&M Manual", "Monitoring Dashboards & Logs", "Incident Reports"]
+                    },
+                    {
+                        title: "Corrective Maintenance (Bug Fixes)",
+                        inputs: ["User-reported incidents", "Defect logs from production"],
+                        activities: ["Analyse & reproduce reported issues", "Apply bug fixes & patches", "Regression testing after fixes"],
+                        artifacts: ["Bug Fix Reports", "Patch Deployment Notes"]
+                    },
+                    {
+                        title: "Adaptive Maintenance (System Updates)",
+                        inputs: ["Technology upgrades", "Security advisories", "Regulatory changes"],
+                        activities: ["Apply OS, DB, middleware updates", "Release functional enhancements", "Deploy security patches"],
+                        artifacts: ["System Update Logs", "Patch Management Reports", "Version Release Notes"]
+                    },
+                    {
+                        title: "Change & Enhancement Requests",
+                        inputs: ["Business change requests (CRs)", "Product backlog", "Feedback from users & stakeholders"],
+                        activities: ["Capture, log, and prioritize CRs", "Impact analysis (cost, schedule, risk)", "Implement approved CRs under change management"],
+                        artifacts: ["Change Request Register", "Approved Change Request Documents", "Updated Configuration Management Records"]
+                    },
+                    {
+                        title: "Knowledge & Handover Management",
+                        inputs: ["Previous KT sessions", "Support team knowledge base"],
+                        activities: ["Update documentation after fixes/changes", "Provide KT for enhancements", "Maintain knowledge repository"],
+                        artifacts: ["Updated O&M Manual", "Knowledge Base / FAQs", "Support Runbooks"]
+                    }
+                ]
+            }
+        ];
+
+        function cleanFolderName(name) {
+            if (!name) return "";
+            return String(name).replace(/^\d+\.\s*/, '').replace(/^\d+\s*/, '').replace(/\s*\([^)]*\)$/, '').trim().toLowerCase();
+        }
+
+        function isParentFolder(manifest, folder) {
+            if (!folder.relativePath) return false;
+            const parentPath = folder.relativePath.toLowerCase();
+            return manifest.some(possibleChild => {
+                if (possibleChild === folder) return false;
+                if (!possibleChild.relativePath) return false;
+                const childPath = possibleChild.relativePath.toLowerCase();
+                return childPath.startsWith(parentPath + '/') && childPath !== parentPath;
+            });
+        }
+
+        function processData(manifest) {
+            folderLookup = {};
+            if (!Array.isArray(manifest)) return;
+            manifest.forEach(item => {
+                const isParent = isParentFolder(manifest, item);
+                if (!isParent) {
+                    const rawName = item.name;
+                    const webUrl = item.webUrl;
+                    const count = item.itemCount || 0;
+                    if (!rawName || !webUrl) return;
+                    const cleaned = cleanFolderName(rawName);
+                    const dataObj = { url: webUrl, count, originalName: rawName };
+                    folderLookup[rawName] = dataObj;
+                    folderLookup[cleaned] = dataObj;
+                }
+            });
+            console.log("Folder Lookup Table:", folderLookup);
+        }
+
+        function renderVisualization() {
+            const container = document.getElementById('container');
+            if (!container) return;
+            container.innerHTML = "";
+
+            ssdlcData.forEach(phase => {
+                const phaseDiv = document.createElement('div');
+                phaseDiv.className = 'phase';
+                phaseDiv.innerHTML = `<h2>${phase.phase}</h2>`;
+
+                phase.categories.forEach(cat => {
+                    const catDiv = document.createElement('div');
+                    catDiv.className = 'category';
+                    const categoryFolder = folderLookup[cat.title] || folderLookup[cleanFolderName(cat.title)];
+                    catDiv.innerHTML = `📂 ${cat.title}`;
+
+                    const detailsDiv = document.createElement('div');
+                    detailsDiv.className = 'details';
+                    let detailsHtml = "";
+
+                    // Inputs Section - NOW WITH CLICKABLE LINKS
+                    detailsHtml += "<div class='section'><div class='section-title'>Inputs:</div><div class='section-content'><ul>";
+                    (cat.inputs || []).forEach(input => {
+                        const inputFolder = folderLookup[input] || folderLookup[cleanFolderName(input)];
+
+                        if (inputFolder) {
+                            const isInputEmpty = inputFolder.count === 0 || inputFolder.count === "0";
+                            if (isInputEmpty) {
+                                detailsHtml += `<li><a href="${inputFolder.url}" target="_blank" class="artifact-link empty">${input}</a><span class="missing-warning">(Artifacts missing)</span></li>`;
+                            } else {
+                                detailsHtml += `<li><a href="${inputFolder.url}" target="_blank" class="artifact-link">${input}</a></li>`;
+                            }
+                        } else {
+                            detailsHtml += `<li>${input}</li>`;
+                        }
+                    });
+                    detailsHtml += "</ul></div></div>";
+
+                    detailsHtml += "<div class='section'><div class='section-title'>Activities:</div><div class='section-content'><ul>";
+                    (cat.activities || []).forEach(activity => { detailsHtml += `<li>${activity}</li>`; });
+                    detailsHtml += "</ul></div></div>";
+
+                    detailsHtml += "<div class='section'><div class='section-title'>Artifacts:</div><div class='section-content'><ul>";
+                    (cat.artifacts || []).forEach(artifact => {
+                        const artifactFolder = folderLookup[artifact] || folderLookup[cleanFolderName(artifact)];
+                        if (artifactFolder) {
+                            const isArtifactEmpty = artifactFolder.count === 0 || artifactFolder.count === "0";
+                            if (isArtifactEmpty) {
+                                detailsHtml += `<li><a href="${artifactFolder.url}" target="_blank" class="artifact-link empty">${artifact}</a><span class="missing-warning">(Artifacts missing)</span></li>`;
+                            } else {
+                                detailsHtml += `<li><a href="${artifactFolder.url}" target="_blank" class="artifact-link">${artifact}</a></li>`;
+                            }
+                        } else {
+                            detailsHtml += `<li>${artifact}</li>`;
+                        }
+                    });
+                    detailsHtml += "</ul></div></div>";
+
+                    detailsDiv.innerHTML = detailsHtml;
+                    catDiv.onclick = function (e) {
+                        if (e.target.tagName === 'A') return;
+                        detailsDiv.classList.toggle('show');
+                    };
+
+                    phaseDiv.appendChild(catDiv);
+                    phaseDiv.appendChild(detailsDiv);
+                });
+
+                container.appendChild(phaseDiv);
+            });
+        }
+
+        // CORS handling for SharePoint
+        const fetchManifest = () => {
+            return fetch(manifestUrl, { 
+                mode: 'cors',
+                headers: {
+                    'Accept': 'application/json'
+                }
+            });
+        };
+
+        document.addEventListener('DOMContentLoaded', () => {
+            fetchManifest()
+                .then(response => {
+                    if (!response.ok) throw new Error('HTTP ' + response.status);
+                    return response.json();
+                })
+                .then(manifest => {
+                    console.log("Manifest loaded:", manifest);
+                    processData(manifest);
+                    renderVisualization();
+                })
+                .catch(err => {
+                    console.warn('Could not load manifest.json — showing static UI only:', err);
+                    renderVisualization();
+                });
+        });
+    </script>
+</body>
+</html>
