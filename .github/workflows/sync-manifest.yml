@@ -2,24 +2,43 @@ name: Sync Manifest from SharePoint
 
 on:
   schedule:
-    - cron: '0 */12 * * *'  # Every 12 hours
-  workflow_dispatch:  # Manual trigger option
+    # 04:30 UTC (12:30 PM SGT) and 16:30 UTC (12:30 AM SGT)
+    - cron: '30 4,16 * * *'  
+  workflow_dispatch: 
+
+permissions:
+  contents: write
 
 jobs:
   sync:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - name: Checkout Code
+        uses: actions/checkout@v4
       
       - name: Download manifest from SharePoint
         run: |
-          # Replace with your actual SharePoint direct URL
-          curl -L -o manifest.json "https://msiglobalcomsg.sharepoint.com/sites/SDLC/Shared%20Documents/manifest.json"
+          # The -f flag fails the step if SharePoint returns an error (like 401 or 404)
+          curl -f -L -o manifest.json "https://msiglobalcomsg.sharepoint.com/:u:/t/MMSP/IQBckwIrKP7SSqUjbYVA8dzXAXca0Jr5RZxPpi-gnqAFi50?e=pzwS9J"
+          
+          # SAFETY CHECK: Ensure the file starts with '{' so we don't commit a login page
+          if grep -q "{" manifest.json; then
+            echo "Valid JSON detected."
+          else
+            echo "Error: Downloaded file is not valid JSON. Check SharePoint link permissions."
+            exit 1
+          fi
       
       - name: Commit and push changes
         run: |
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
           git add manifest.json
-          git commit -m "Auto-sync manifest from SharePoint" || echo "No changes to commit"
-          git push
+          
+          # Only commit if the file actually changed to prevent 'Exit 128: nothing to commit'
+          if git diff --quiet && git diff --staged --quiet; then
+            echo "No changes detected in manifest.json. Skipping push."
+          else
+            git commit -m "Auto-sync manifest from SharePoint"
+            git push
+          fi
