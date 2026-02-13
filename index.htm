@@ -426,6 +426,79 @@
             });
         }
 
+        function normalizeString(str) {
+            if (!str) return "";
+            return String(str)
+                // Handle Unicode normalization (e.g., curly apostrophes → straight)
+                .normalize('NFKD')
+                .replace(/[\u2018\u2019]/g, "'")  // Curly quotes to straight
+                .replace(/[\u201C\u201D]/g, '"')  // Curly double quotes to straight
+                .replace(/[\u2013\u2014]/g, '-')  // En/em dashes to hyphen
+                // Normalize slashes and "or"
+                .replace(/\s*\/\s*/g, ' or ')
+                .replace(/\s+or\s+/g, ' or ')
+                // Remove leading numbers
+                .replace(/^\d+\.\s*/, '')
+                .replace(/^\d+\s*/, '')
+                // Normalize whitespace
+                .replace(/\s+/g, ' ')
+                .trim()
+                .toLowerCase();
+        }
+
+        function levenshteinDistance(a, b) {
+            const matrix = [];
+            for (let i = 0; i <= b.length; i++) {
+                matrix[i] = [i];
+            }
+            for (let j = 0; j <= a.length; j++) {
+                matrix[0][j] = j;
+            }
+            for (let i = 1; i <= b.length; i++) {
+                for (let j = 1; j <= a.length; j++) {
+                    if (b.charAt(i - 1) === a.charAt(j - 1)) {
+                        matrix[i][j] = matrix[i - 1][j - 1];
+                    } else {
+                        matrix[i][j] = Math.min(
+                            matrix[i - 1][j - 1] + 1,
+                            matrix[i][j - 1] + 1,
+                            matrix[i - 1][j] + 1
+                        );
+                    }
+                }
+            }
+            return matrix[b.length][a.length];
+        }
+
+        function fuzzyMatch(target, candidates, threshold = 0.8) {
+            const normalized = normalizeString(target);
+            let bestMatch = null;
+            let bestScore = 0;
+
+            candidates.forEach(candidate => {
+                const normalizedCandidate = normalizeString(candidate);
+                
+                // Exact match after normalization
+                if (normalized === normalizedCandidate) {
+                    bestScore = 1;
+                    bestMatch = candidate;
+                    return;
+                }
+
+                // Fuzzy match using Levenshtein distance
+                const distance = levenshteinDistance(normalized, normalizedCandidate);
+                const maxLength = Math.max(normalized.length, normalizedCandidate.length);
+                const similarity = 1 - (distance / maxLength);
+
+                if (similarity > bestScore && similarity >= threshold) {
+                    bestScore = similarity;
+                    bestMatch = candidate;
+                }
+            });
+
+            return { match: bestMatch, score: bestScore };
+        }
+
         function processData(manifest) {
             folderLookup = {};
             if (!Array.isArray(manifest)) return;
@@ -436,115 +509,29 @@
                     const webUrl = item.webUrl;
                     const count = item.itemCount || 0;
                     if (!rawName || !webUrl) return;
-                    const cleaned = cleanFolderName(rawName);
+                    const normalized = normalizeString(rawName);
                     const dataObj = { url: webUrl, count, originalName: rawName };
                     folderLookup[rawName] = dataObj;
-                    folderLookup[cleaned] = dataObj;
+                    folderLookup[normalized] = dataObj;
                 }
             });
             console.log("Folder Lookup Table:", folderLookup);
         }
 
-        function renderVisualization() {
-            const container = document.getElementById('container');
-            if (!container) return;
-            container.innerHTML = "";
+        function findArtifactFolder(artifactName) {
+            // Try direct lookup first
+            if (folderLookup[artifactName]) {
+                return folderLookup[artifactName];
+            }
+            
+            const normalized = normalizeString(artifactName);
+            if (folderLookup[normalized]) {
+                return folderLookup[normalized];
+            }
 
-            ssdlcData.forEach(phase => {
-                const phaseDiv = document.createElement('div');
-                phaseDiv.className = 'phase';
-                phaseDiv.innerHTML = `<h2>${phase.phase}</h2>`;
-
-                phase.categories.forEach(cat => {
-                    const catDiv = document.createElement('div');
-                    catDiv.className = 'category';
-                    const categoryFolder = folderLookup[cat.title] || folderLookup[cleanFolderName(cat.title)];
-                    catDiv.innerHTML = `📂 ${cat.title}`;
-
-                    const detailsDiv = document.createElement('div');
-                    detailsDiv.className = 'details';
-                    let detailsHtml = "";
-
-                    // Inputs Section - NOW WITH CLICKABLE LINKS
-                    detailsHtml += "<div class='section'><div class='section-title'>Inputs:</div><div class='section-content'><ul>";
-                    (cat.inputs || []).forEach(input => {
-                        const inputFolder = folderLookup[input] || folderLookup[cleanFolderName(input)];
-
-                        if (inputFolder) {
-                            const isInputEmpty = inputFolder.count === 0 || inputFolder.count === "0";
-                            if (isInputEmpty) {
-                                detailsHtml += `<li><a href="${inputFolder.url}" target="_blank" class="artifact-link empty">${input}</a><span class="missing-warning">(Artifacts missing)</span></li>`;
-                            } else {
-                                detailsHtml += `<li><a href="${inputFolder.url}" target="_blank" class="artifact-link">${input}</a></li>`;
-                            }
-                        } else {
-                            detailsHtml += `<li>${input}</li>`;
-                        }
-                    });
-                    detailsHtml += "</ul></div></div>";
-
-                    detailsHtml += "<div class='section'><div class='section-title'>Activities:</div><div class='section-content'><ul>";
-                    (cat.activities || []).forEach(activity => { detailsHtml += `<li>${activity}</li>`; });
-                    detailsHtml += "</ul></div></div>";
-
-                    detailsHtml += "<div class='section'><div class='section-title'>Artifacts:</div><div class='section-content'><ul>";
-                    (cat.artifacts || []).forEach(artifact => {
-                        const artifactFolder = folderLookup[artifact] || folderLookup[cleanFolderName(artifact)];
-                        if (artifactFolder) {
-                            const isArtifactEmpty = artifactFolder.count === 0 || artifactFolder.count === "0";
-                            if (isArtifactEmpty) {
-                                detailsHtml += `<li><a href="${artifactFolder.url}" target="_blank" class="artifact-link empty">${artifact}</a><span class="missing-warning">(Artifacts missing)</span></li>`;
-                            } else {
-                                detailsHtml += `<li><a href="${artifactFolder.url}" target="_blank" class="artifact-link">${artifact}</a></li>`;
-                            }
-                        } else {
-                            detailsHtml += `<li>${artifact}</li>`;
-                        }
-                    });
-                    detailsHtml += "</ul></div></div>";
-
-                    detailsDiv.innerHTML = detailsHtml;
-                    catDiv.onclick = function (e) {
-                        if (e.target.tagName === 'A') return;
-                        detailsDiv.classList.toggle('show');
-                    };
-
-                    phaseDiv.appendChild(catDiv);
-                    phaseDiv.appendChild(detailsDiv);
-                });
-
-                container.appendChild(phaseDiv);
-            });
-        }
-
-        // CORS handling for SharePoint
-        const fetchManifest = () => {
-            return fetch(manifestUrl, { 
-                mode: 'cors',
-                headers: {
-                    'Accept': 'application/json'
-                }
-            });
-        };
-
-        document.addEventListener('DOMContentLoaded', () => {
-            fetchManifest()
-                .then(response => {
-                    if (!response.ok) throw new Error('HTTP ' + response.status);
-                    return response.json();
-                })
-                .then(manifest => {
-                    console.log("Manifest loaded:", manifest);
-                    processData(manifest);
-                    renderVisualization();
-                })
-                .catch(err => {
-                    console.warn('Could not load manifest.json — showing static UI only:', err);
-                    renderVisualization();
-                });
-        });
-    </script>
-</body>
-
-</html>
+            // Fuzzy match if direct lookup fails
+            const candidates = Object.keys(folderLookup);
+            const result = fuzzyMatch(artifactName, candidates, 0.75);
+            
+            if
 
