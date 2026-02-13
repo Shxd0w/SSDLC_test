@@ -4,6 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>SSDLC Visualization</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='75' font-size='75'>📋</text></svg>" />
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -110,17 +111,12 @@
         <div id="container"></div>
     </div>
     <script type="text/javascript">
-        // TODO: Replace this URL with the direct SharePoint manifest.json path
-        // Format: https://yourtenant.sharepoint.com/sites/yoursite/Shared%20Documents/SSDLC/manifest.json
 
-        // Use a CORS proxy to bypass SharePoint restrictions
         const manifestUrl = './manifest.json';
-        // Or use another CORS proxy:
-        // const manifestUrl = 'https://api.allorigins.win/raw?url=https://msiglobalcomsg.sharepoint.com/:u:/t/SDLC/IQCG09GV7ETTS5wfRBuEoujVAbLW70ocxBWGjQWl5km_QwM?e=Z4qrLK';
 
         let folderLookup = {};
 
-        const ssdlcData = [                                                                                                                                                                         
+        const ssdlcData = [
             {
                 phase: "Initiation / Vision",
                 categories: [
@@ -529,9 +525,114 @@
                 return folderLookup[normalized];
             }
 
-            // Fuzzy match if direct lookup fails
             const candidates = Object.keys(folderLookup);
             const result = fuzzyMatch(artifactName, candidates, 0.75);
             
-            if
+            if (result.match) {
+                console.log(`Fuzzy matched "${artifactName}" to "${result.match}" (score: ${result.score.toFixed(2)})`);
+                return folderLookup[result.match];
+            }
+
+            return null;
+        }
+
+        function renderVisualization() {
+            const container = document.getElementById('container');
+            if (!container) return;
+            container.innerHTML = "";
+
+            ssdlcData.forEach(phase => {
+                const phaseDiv = document.createElement('div');
+                phaseDiv.className = 'phase';
+                phaseDiv.innerHTML = `<h2>${phase.phase}</h2>`;
+
+                phase.categories.forEach(cat => {
+                    const catDiv = document.createElement('div');
+                    catDiv.className = 'category';
+                    catDiv.innerHTML = `📂 ${cat.title}`;
+
+                    const detailsDiv = document.createElement('div');
+                    detailsDiv.className = 'details';
+                    let detailsHtml = "";
+
+                    detailsHtml += "<div class='section'><div class='section-title'>Inputs:</div><div class='section-content'><ul>";
+                    (cat.inputs || []).forEach(input => {
+                        const inputFolder = findArtifactFolder(input);
+                        if (inputFolder) {
+                            const isInputEmpty = inputFolder.count === 0 || inputFolder.count === "0";
+                            if (isInputEmpty) {
+                                detailsHtml += `<li><a href="${inputFolder.url}" target="_blank" class="artifact-link empty">${input}</a><span class="missing-warning">(Artifacts missing)</span></li>`;
+                            } else {
+                                detailsHtml += `<li><a href="${inputFolder.url}" target="_blank" class="artifact-link">${input}</a></li>`;
+                            }
+                        } else {
+                            detailsHtml += `<li>${input}</li>`;
+                        }
+                    });
+                    detailsHtml += "</ul></div></div>";
+
+                    detailsHtml += "<div class='section'><div class='section-title'>Activities:</div><div class='section-content'><ul>";
+                    (cat.activities || []).forEach(activity => {
+                        detailsHtml += `<li>${activity}</li>`;
+                    });
+                    detailsHtml += "</ul></div></div>";
+
+                    detailsHtml += "<div class='section'><div class='section-title'>Artifacts:</div><div class='section-content'><ul>";
+                    (cat.artifacts || []).forEach(artifact => {
+                        const artifactFolder = findArtifactFolder(artifact);
+                        if (artifactFolder) {
+                            const isArtifactEmpty = artifactFolder.count === 0 || artifactFolder.count === "0";
+                            if (isArtifactEmpty) {
+                                detailsHtml += `<li><a href="${artifactFolder.url}" target="_blank" class="artifact-link empty">${artifact}</a><span class="missing-warning">(Artifacts missing)</span></li>`;
+                            } else {
+                                detailsHtml += `<li><a href="${artifactFolder.url}" target="_blank" class="artifact-link">${artifact}</a></li>`;
+                            }
+                        } else {
+                            detailsHtml += `<li>${artifact}</li>`;
+                        }
+                    });
+                    detailsHtml += "</ul></div></div>";
+
+                    detailsDiv.innerHTML = detailsHtml;
+                    catDiv.onclick = function (e) {
+                        if (e.target.tagName === 'A') return;
+                        detailsDiv.classList.toggle('show');
+                    };
+
+                    phaseDiv.appendChild(catDiv);
+                    phaseDiv.appendChild(detailsDiv);
+                });
+
+                container.appendChild(phaseDiv);
+            });
+        }
+
+        const fetchManifest = () => {
+            return fetch(manifestUrl, { 
+                mode: 'cors',
+                headers: {
+                    'Accept': 'application/json'
+                }
+            });
+        };
+
+        document.addEventListener('DOMContentLoaded', () => {
+            fetchManifest()
+                .then(response => {
+                    if (!response.ok) throw new Error('HTTP ' + response.status);
+                    return response.json();
+                })
+                .then(manifest => {
+                    console.log("Manifest loaded:", manifest);
+                    processData(manifest);
+                    renderVisualization();
+                })
+                .catch(err => {
+                    console.warn('Could not load manifest.json — showing static UI only:', err);
+                    renderVisualization();
+                });
+        });
+    </script>
+</body>
+</html>
 

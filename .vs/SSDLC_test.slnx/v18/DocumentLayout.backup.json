@@ -38,7 +38,8 @@
               "RelativeToolTip": "manifest.json",
               "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAaTgAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001642|",
-              "WhenOpened": "2026-02-13T01:31:13.605Z"
+              "WhenOpened": "2026-02-13T01:31:13.605Z",
+              "EditorCaption": ""
             },
             {
               "$type": "Document",
@@ -48,7 +49,7 @@
               "RelativeDocumentMoniker": "index.htm",
               "ToolTip": "D:\\SSDLC Website GitHub\\SSDLC_test\\index.htm",
               "RelativeToolTip": "index.htm",
-              "ViewState": "AgIAAPUBAAAAAAAAAAAEwHsAAABCAAAAAAAAAA==",
+              "ViewState": "AgIAAMoBAAAAAAAAAAAwwNgBAAA/AAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001512|",
               "WhenOpened": "2026-02-13T01:21:08.6Z",
               "EditorCaption": ""
