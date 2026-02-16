@@ -561,7 +561,7 @@
                         if (inputFolder) {
                             const isInputEmpty = inputFolder.count === 0 || inputFolder.count === "0";
                             if (isInputEmpty) {
-                                detailsHtml += `<li><a href="${inputFolder.url}" target="_blank" class="artifact-link empty">${input}</a><span class="missing-warning">(Artifacts missing)</span></li>`;
+                                detailsHtml += `<li><a href="${inputFolder.url}" target="_blank" class="artifact-link empty">${input}</a><span class="missing-warning">(Input File(s) missing)</span></li>`;
                             } else {
                                 detailsHtml += `<li><a href="${inputFolder.url}" target="_blank" class="artifact-link">${input}</a></li>`;
                             }
@@ -583,7 +583,7 @@
                         if (artifactFolder) {
                             const isArtifactEmpty = artifactFolder.count === 0 || artifactFolder.count === "0";
                             if (isArtifactEmpty) {
-                                detailsHtml += `<li><a href="${artifactFolder.url}" target="_blank" class="artifact-link empty">${artifact}</a><span class="missing-warning">(Files missing)</span></li>`;
+                                detailsHtml += `<li><a href="${artifactFolder.url}" target="_blank" class="artifact-link empty">${artifact}</a><span class="missing-warning">(Artifact(s) missing)</span></li>`;
                             } else {
                                 detailsHtml += `<li><a href="${artifactFolder.url}" target="_blank" class="artifact-link">${artifact}</a></li>`;
                             }
